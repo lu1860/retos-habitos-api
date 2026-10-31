@@ -1,0 +1,48 @@
+{
+  "name": "retos-habitos-api",
+  "version": "1.0.0",
+  "description": "API REST de Retos de hábitos en grupo (Express + TypeScript + Prisma + PostgreSQL)",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "seed": "prisma db seed",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "bcrypt": "6.0.0",
+    "class-validator": "0.15.1",
+    "cors": "2.8.6",
+    "dotenv": "18.0.8",
+    "express": "5.2.1",
+    "jsonwebtoken": "9.0.3",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/bcrypt": "6.0.0",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.6",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/node": "26.5.0",
+    "@types/pg": "8.23.1",
+    "eslint": "10.11.0",
+    "globals": "16.5.0",
+    "prettier": "3.6.2",
+    "prisma": "7.10.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1"
+  }
+}

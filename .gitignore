@@ -1,0 +1,12 @@
+node_modules/
+dist/
+src/generated/
+
+# Variables de entorno reales: nunca se suben
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+coverage/

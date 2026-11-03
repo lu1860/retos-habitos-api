@@ -1,0 +1,103 @@
+// Retos de hábitos en grupo: modelo de datos.
+// Las tablas y columnas van en snake_case (como en clase). Los repositorios de infrastructure
+// convierten cada fila al modelo de dominio en camelCase.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Rol del usuario. El registro público siempre crea "user"; el admin solo lo crea el seed.
+enum rol_usuario {
+  admin
+  user
+}
+
+// Borrado lógico: eliminar es pasar a INACTIVE, nunca borrar la fila.
+enum estado {
+  ACTIVE
+  INACTIVE
+}
+
+model usuarios {
+  id              Int               @id @default(autoincrement())
+  nombre          String            @db.VarChar(100)
+  email           String            @unique @db.VarChar(150)
+  password        String            @db.VarChar(255) // hash de bcrypt, nunca el texto plano
+  rol             rol_usuario       @default(user)
+  status          estado            @default(ACTIVE)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  retos_creados   retos[]
+  participaciones participaciones[]
+  registros       registros[]
+}
+
+model categorias {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @unique @db.VarChar(100)
+  descripcion String?  @db.VarChar(500)
+  status      estado   @default(ACTIVE)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  retos       retos[]
+}
+
+// Recurso principal: tiene imagen (URL pública de Supabase Storage).
+model retos {
+  id              Int               @id @default(autoincrement())
+  nombre          String            @db.VarChar(120)
+  descripcion     String            @db.VarChar(1000)
+  imagen_url      String?           @db.VarChar(500)
+  duracion_dias   Int
+  es_oficial      Boolean           @default(false) // lo decide el servidor según el rol de quien crea
+  categoria_id    Int
+  creador_id      Int // sale del token, nunca del body
+  status          estado            @default(ACTIVE)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  categoria       categorias        @relation(fields: [categoria_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creador         usuarios          @relation(fields: [creador_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  participaciones participaciones[]
+  registros       registros[]
+
+  @@index([status])
+  @@index([categoria_id])
+  @@index([creador_id])
+}
+
+// Tabla de enlace: quién se unió a qué reto. Una fila por usuario y reto (salir = INACTIVE).
+model participaciones {
+  id          Int      @id @default(autoincrement())
+  usuario_id  Int
+  reto_id     Int
+  fecha_union DateTime @default(now()) @db.Timestamptz(6)
+  status      estado   @default(ACTIVE)
+  usuario     usuarios @relation(fields: [usuario_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reto        retos    @relation(fields: [reto_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([usuario_id, reto_id])
+  @@index([reto_id])
+}
+
+// Cumplimiento diario: un registro por usuario, reto y día.
+// fecha es @db.Date (solo el día, sin hora): así dos registros del mismo día chocan con el @@unique.
+model registros {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  reto_id    Int
+  fecha      DateTime @db.Date
+  nota       String?  @db.VarChar(500)
+  status     estado   @default(ACTIVE)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  usuario    usuarios @relation(fields: [usuario_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reto       retos    @relation(fields: [reto_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([usuario_id, reto_id, fecha])
+  @@index([reto_id])
+}

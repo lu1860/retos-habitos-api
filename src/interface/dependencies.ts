@@ -7,6 +7,10 @@ import { RetosPgRepository } from "../infrastructure/repository/retos.pg.reposit
 import { CategoriasPgRepository } from "../infrastructure/repository/categorias.pg.repository.ts";
 import { BcryptService } from "../infrastructure/services/bcrypt.service.ts";
 import { JwtService } from "../infrastructure/services/jwt.service.ts";
+import { ParticipacionesUseCase } from "../application/participaciones/participaciones.use-case.ts";
+import { ParticipacionesPgRepository } from "../infrastructure/repository/participaciones.pg.repository.ts";
+
+export const participacionesUseCase = new ParticipacionesUseCase(new ParticipacionesPgRepository());
 
 /**
  * Inyección de dependencias: el ÚNICO lugar donde se crean las implementaciones de infrastructure

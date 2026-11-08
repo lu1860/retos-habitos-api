@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { RetosController } from "../controllers/retos.controller.ts";
-import { retosUseCase } from "../dependencies.ts";
+import { retosUseCase, participacionesUseCase } from "../dependencies.ts";
+import { ParticipacionesController } from "../controllers/participaciones.controller.ts";
 import { CrearRetoDto } from "../../infrastructure/dtos/crear-reto.dto.ts";
 import { retosImage, validateRetoUpdate } from "../middlewares/retos-image.middleware.ts";
 import { authenticate } from "../middlewares/auth.middleware.ts";
@@ -8,6 +9,10 @@ import { validateBody } from "../middlewares/validate.middleware.ts";
 
 const router = Router();
 const controller = new RetosController(retosUseCase);
+const participaciones = new ParticipacionesController(participacionesUseCase);
+
+router.post("/:id/participantes", authenticate, participaciones.join);
+router.delete("/:id/participantes", authenticate, participaciones.leave);
 
 router.post("/", authenticate, retosImage, validateBody(CrearRetoDto), controller.create);
 router.patch("/:id", authenticate, retosImage, validateRetoUpdate, controller.update);

@@ -34,7 +34,12 @@ export const tokenService = new JwtService();
 export const authUseCase = new AuthUseCase(usuariosRepository, passwordHasher, tokenService);
 export const usuariosUseCase = new UsuariosUseCase(usuariosRepository);
 export const categoriasUseCase = new CategoriasUseCase(categoriasRepository);
-export const retosUseCase = new RetosUseCase(new RetosPgRepository(), categoriasRepository, {
-  upload: (file) => new SupabaseImageService().upload(file),
-  remove: (path) => new SupabaseImageService().remove(path),
-});
+export const retosUseCase = new RetosUseCase(
+  new RetosPgRepository(),
+  categoriasRepository,
+  usuariosRepository,
+  {
+    upload: (file) => new SupabaseImageService().upload(file),
+    remove: (path) => new SupabaseImageService().remove(path),
+  },
+);

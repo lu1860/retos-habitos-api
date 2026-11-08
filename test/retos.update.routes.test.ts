@@ -14,6 +14,18 @@ let writes = 0;
 let categoryQueries = 0;
 
 before(async () => {
+  const { UsuariosPgRepository } = await import(
+    "../src/infrastructure/repository/usuarios.pg.repository.ts"
+  );
+  mock.method(UsuariosPgRepository.prototype, "findActiveById", async (id: number) => ({
+    id,
+    nombre: "Ana",
+    email: "ana@example.test",
+    passwordHash: "no-se-usa",
+    rol: id === 8 ? "admin" : "user",
+    status: "ACTIVE",
+    createdAt: new Date(),
+  }));
   const { RetosPgRepository } = await import(
     "../src/infrastructure/repository/retos.pg.repository.ts"
   );

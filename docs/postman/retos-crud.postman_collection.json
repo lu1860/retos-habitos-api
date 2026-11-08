@@ -1,0 +1,2719 @@
+{
+  "info": {
+    "name": "Parte B — CRUD de retos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Contrato inspeccionado en feat/retos-api, 9d1a002. Importación y revisión offline seguras. No ejecutar contra datos compartidos. Ver README.md: orden por fases, permisos, imágenes y limpieza. Las escrituras están bloqueadas por defecto."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Nunca habilita escrituras por sí solo. skipRequest requiere Postman actualizado.",
+          "const method = pm.request.method;",
+          "if (['POST','PATCH','DELETE'].includes(method) && pm.environment.get('habilitarEscrituras') !== 'SI_SOLO_DATOS_PRUEBA') {",
+          "  console.warn('Omitida: habilitarEscrituras no habilitado. Consulte README.');",
+          "  pm.execution.skipRequest();",
+          "}",
+          "if (pm.request.method === 'POST' && pm.request.url.toString().endsWith('/api/retos')) {",
+          "  const a=pm.request.auth;",
+          "  const admin=a && a.type==='bearer' && String(a.bearer.get('token')).includes('adminToken');",
+          "  if(!pm.environment.get(admin?'adminUsuarioId':'usuarioId')) { console.warn('Omitida: ejecutar login antes de crear fixtures.'); pm.execution.skipRequest(); }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Login creador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Login creador",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.environment.unset('token'); pm.environment.unset('usuarioId');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.a('string').and.not.empty; pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('user'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
+                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user.rol==='user') {pm.environment.set('token',d.token); pm.environment.set('usuarioId',String(d.user.id));} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login administrador",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Login administrador",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('adminToken'); pm.environment.unset('adminUsuarioId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.a('string').and.not.empty; pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('admin'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
+                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user.rol==='admin') {pm.environment.set('adminToken',d.token); pm.environment.set('adminUsuarioId',String(d.user.id));} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login otro usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Login otro usuario",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{otroUsuarioEmail}}\",\n  \"password\": \"{{otroUsuarioPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('otroUsuarioToken'); pm.environment.unset('otroUsuarioId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.a('string').and.not.empty; pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('user'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
+                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user.rol==='user') {pm.environment.set('otroUsuarioToken',d.token); pm.environment.set('otroUsuarioId',String(d.user.id));} }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Perfil del creador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": "Perfil del creador"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Perfil propio sin hash',()=>{const u=pm.response.json().data; pm.expect(u.id).to.eql(Number(pm.environment.get('usuarioId'))); pm.expect(u.rol).to.eql('user'); pm.expect(u).not.to.have.property('passwordHash');});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login DTO inválido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Login DTO inválido",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"no-es-email\",\n  \"password\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login credenciales incorrectas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Configurar una contraseña deliberadamente distinta de la válida; no se guarda ningún token.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{passwordIncorrecta}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Consultas de retos",
+      "item": [
+        {
+          "name": "Lista pública por defecto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Lista pública por defecto",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Lista y paginación reales', () => { const b=pm.response.json(); pm.expect(b.data).to.be.an('array'); b.data.forEach(reto); const p=b.pagination; ['total','currentPage','limit','totalPages'].forEach(k=>{pm.expect(p[k],k).to.be.a('number'); pm.expect(Number.isInteger(p[k]),k).to.eql(true);}); pm.expect(p.total).to.be.at.least(0); pm.expect(p.currentPage).to.be.at.least(1); pm.expect(p.limit).to.be.within(1,50); pm.expect(p.totalPages).to.eql(Math.ceil(p.total/p.limit)); pm.expect(b.data.length).to.be.at.most(p.limit); });",
+                  "pm.test('Valores por defecto',()=>{const p=pm.response.json().pagination; pm.expect(p.currentPage).to.eql(1); pm.expect(p.limit).to.eql(10);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro por categoría",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?categoriaId={{categoriaId}}",
+            "description": "Filtro por categoría",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Lista y paginación reales', () => { const b=pm.response.json(); pm.expect(b.data).to.be.an('array'); b.data.forEach(reto); const p=b.pagination; ['total','currentPage','limit','totalPages'].forEach(k=>{pm.expect(p[k],k).to.be.a('number'); pm.expect(Number.isInteger(p[k]),k).to.eql(true);}); pm.expect(p.total).to.be.at.least(0); pm.expect(p.currentPage).to.be.at.least(1); pm.expect(p.limit).to.be.within(1,50); pm.expect(p.totalPages).to.eql(Math.ceil(p.total/p.limit)); pm.expect(b.data.length).to.be.at.most(p.limit); });",
+                  "pm.test('Categoría filtrada',()=>pm.response.json().data.forEach(r=>pm.expect(r.categoriaId).to.eql(Number(pm.environment.get('categoriaId')))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro por texto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?q={{textoBusqueda}}",
+            "description": "Filtro por texto",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Lista y paginación reales', () => { const b=pm.response.json(); pm.expect(b.data).to.be.an('array'); b.data.forEach(reto); const p=b.pagination; ['total','currentPage','limit','totalPages'].forEach(k=>{pm.expect(p[k],k).to.be.a('number'); pm.expect(Number.isInteger(p[k]),k).to.eql(true);}); pm.expect(p.total).to.be.at.least(0); pm.expect(p.currentPage).to.be.at.least(1); pm.expect(p.limit).to.be.within(1,50); pm.expect(p.totalPages).to.eql(Math.ceil(p.total/p.limit)); pm.expect(b.data.length).to.be.at.most(p.limit); });",
+                  "pm.test('Texto en nombre o descripción',()=>{const q=pm.environment.get('textoBusqueda').trim().toLowerCase(); pm.response.json().data.forEach(r=>pm.expect((r.nombre+' '+r.descripcion).toLowerCase()).to.include(q));});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtros combinados y página 2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?categoriaId={{categoriaId}}&q={{textoBusqueda}}&page=2&limit=2",
+            "description": "Filtros combinados y página 2",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Lista y paginación reales', () => { const b=pm.response.json(); pm.expect(b.data).to.be.an('array'); b.data.forEach(reto); const p=b.pagination; ['total','currentPage','limit','totalPages'].forEach(k=>{pm.expect(p[k],k).to.be.a('number'); pm.expect(Number.isInteger(p[k]),k).to.eql(true);}); pm.expect(p.total).to.be.at.least(0); pm.expect(p.currentPage).to.be.at.least(1); pm.expect(p.limit).to.be.within(1,50); pm.expect(p.totalPages).to.eql(Math.ceil(p.total/p.limit)); pm.expect(b.data.length).to.be.at.most(p.limit); });",
+                  "pm.test('Página y filtros',()=>{const b=pm.response.json(); pm.expect(b.pagination.currentPage).to.eql(2); pm.expect(b.pagination.limit).to.eql(2); b.data.forEach(r=>{pm.expect(r.categoriaId).to.eql(Number(pm.environment.get('categoriaId'))); pm.expect((r.nombre+' '+r.descripcion).toLowerCase()).to.include(pm.environment.get('textoBusqueda').trim().toLowerCase());});});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle del fixture (fase 2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "Detalle del fixture (fase 2)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "pm.test('ID solicitado',()=>pm.expect(pm.response.json().data.id).to.eql(Number(pm.environment.get('retoId'))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Creación de retos",
+      "item": [
+        {
+          "name": "Crear fixture JSON como user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Crear fixture JSON como user",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreCaso}}\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 7,\n  \"categoriaId\": {{categoriaId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('retoId'); pm.environment.unset('retoIdPropio'); pm.variables.set('nombreCaso', 'Postman B ' + pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "if(pm.response.code === 201) { const r=pm.response.json().data; if(Number.isInteger(r.id) && r.nombre === pm.variables.get('nombreCaso') && r.creadorId === Number(pm.environment.get('usuarioId'))) { pm.environment.set('retoId',String(r.id)); pm.environment.set('retoIdPropio',String(r.id)); } else { pm.test('Creación atribuible al usuario de prueba',()=>{throw new Error('No se guarda ID: identidad/nombre inesperados');}); } }",
+                  "pm.test('Reto comunitario sin imagen',()=>{const r=pm.response.json().data; pm.expect(r.esOficial).to.eql(false); pm.expect(r.imagenUrl).to.eql(null);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear fixture JSON como admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Crear fixture JSON como admin",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreCaso}}\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 7,\n  \"categoriaId\": {{categoriaId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('retoAdminId'); pm.environment.unset('retoAdminIdPropio'); pm.variables.set('nombreCaso', 'Postman B ' + pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "if(pm.response.code === 201) { const r=pm.response.json().data; if(Number.isInteger(r.id) && r.nombre === pm.variables.get('nombreCaso') && r.creadorId === Number(pm.environment.get('adminUsuarioId'))) { pm.environment.set('retoAdminId',String(r.id)); pm.environment.set('retoAdminIdPropio',String(r.id)); } else { pm.test('Creación atribuible al usuario de prueba',()=>{throw new Error('No se guarda ID: identidad/nombre inesperados');}); } }",
+                  "pm.test('Reto oficial del administrador',()=>{const r=pm.response.json().data; pm.expect(r.esOficial).to.eql(true); pm.expect(r.creadorId).to.eql(Number(pm.environment.get('adminUsuarioId')));});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Edición de retos",
+      "item": [
+        {
+          "name": "Editar fixture como creador",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "Editar fixture como creador",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Fixture editado por creador\",\n  \"duracionDias\": 14\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "pm.test('Cambios aplicados',()=>{const r=pm.response.json().data; pm.expect(r.descripcion).to.eql('Fixture editado por creador'); pm.expect(r.duracionDias).to.eql(14);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar fixture ajeno como admin",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "Editar fixture ajeno como admin",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcion\": \"Fixture editado por admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "pm.test('Admin conserva creador y oficialidad',()=>{const r=pm.response.json().data; pm.expect(r.descripcion).to.eql('Fixture editado por admin'); pm.expect(r.creadorId).to.eql(Number(pm.environment.get('usuarioId'))); pm.expect(r.esOficial).to.eql(false);});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eliminación lógica",
+      "item": [
+        {
+          "name": "Desactivar fixture por creador",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "Desactivar fixture por creador",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));",
+                  "if(pm.response.code===204) pm.environment.set('retoIdInactivo',pm.environment.get('retoId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle inactivo creador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "Detalle inactivo creador",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(pm.environment.get('retoIdInactivo')!==pm.environment.get('retoId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar fixture por admin",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoAdminId}}",
+            "description": "Desactivar fixture por admin",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoAdminId') || pm.environment.get('retoAdminId') !== pm.environment.get('retoAdminIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));",
+                  "if(pm.response.code===204) pm.environment.set('retoAdminIdInactivo',pm.environment.get('retoAdminId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle inactivo admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoAdminId}}",
+            "description": "Detalle inactivo admin",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoAdminId') || pm.environment.get('retoAdminId') !== pm.environment.get('retoAdminIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(pm.environment.get('retoAdminIdInactivo')!==pm.environment.get('retoAdminId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar fixture por creador (imagen)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "Desactivar fixture por creador (imagen)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));",
+                  "if(pm.response.code===204) pm.environment.set('retoImagenIdInactivo',pm.environment.get('retoImagenId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle inactivo creador (imagen)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "Detalle inactivo creador (imagen)",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(pm.environment.get('retoImagenIdInactivo')!==pm.environment.get('retoImagenId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repetir DELETE de inactivo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "Repetir DELETE de inactivo"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(pm.environment.get('retoIdInactivo')!==pm.environment.get('retoId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH de inactivo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH de inactivo",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No debe aplicarse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(pm.environment.get('retoIdInactivo')!==pm.environment.get('retoId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Inactivo ausente del listado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?q=Postman&page=1&limit=50",
+            "description": "Inactivo ausente del listado",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Lista y paginación reales', () => { const b=pm.response.json(); pm.expect(b.data).to.be.an('array'); b.data.forEach(reto); const p=b.pagination; ['total','currentPage','limit','totalPages'].forEach(k=>{pm.expect(p[k],k).to.be.a('number'); pm.expect(Number.isInteger(p[k]),k).to.eql(true);}); pm.expect(p.total).to.be.at.least(0); pm.expect(p.currentPage).to.be.at.least(1); pm.expect(p.limit).to.be.within(1,50); pm.expect(p.totalPages).to.eql(Math.ceil(p.total/p.limit)); pm.expect(b.data.length).to.be.at.most(p.limit); });",
+                  "pm.test('No devuelve fixtures desactivados',()=>{const ids=['retoIdInactivo','retoAdminIdInactivo','retoImagenIdInactivo'].map(k=>Number(pm.environment.get(k))); pm.response.json().data.forEach(r=>pm.expect(ids).not.to.include(r.id));});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Imágenes",
+      "item": [
+        {
+          "name": "Crear fixture multipart con imagen",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Crear fixture multipart con imagen",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "value": "{{nombreCaso}}"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "Fixture con imagen de Postman B"
+                },
+                {
+                  "key": "duracionDias",
+                  "type": "text",
+                  "value": "7"
+                },
+                {
+                  "key": "categoriaId",
+                  "type": "text",
+                  "value": "{{categoriaId}}"
+                },
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar JPG/JPEG, PNG o WebP real, hasta 2097152 bytes."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "pm.environment.unset('retoImagenId'); pm.environment.unset('retoImagenIdPropio'); pm.variables.set('nombreCaso', 'Postman B ' + pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "if(pm.response.code === 201) { const r=pm.response.json().data; if(Number.isInteger(r.id) && r.nombre === pm.variables.get('nombreCaso') && r.creadorId === Number(pm.environment.get('usuarioId'))) { pm.environment.set('retoImagenId',String(r.id)); pm.environment.set('retoImagenIdPropio',String(r.id)); } else { pm.test('Creación atribuible al usuario de prueba',()=>{throw new Error('No se guarda ID: identidad/nombre inesperados');}); } }",
+                  "pm.test('URL pública de imagen',()=>{const u=pm.response.json().data.imagenUrl; pm.expect(u).to.be.a('string'); pm.expect(u.startsWith('https://')).to.eql(true); pm.expect(u).to.include('/storage/v1/object/public/retos/');});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH solo imagen",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "PATCH solo imagen",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar otra imagen válida hasta 2 MiB."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "pm.test('URL pública de imagen',()=>{const u=pm.response.json().data.imagenUrl; pm.expect(u).to.be.a('string'); pm.expect(u.startsWith('https://')).to.eql(true); pm.expect(u).to.include('/storage/v1/object/public/retos/');});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH campos e imagen",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "PATCH campos e imagen",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "Imagen y texto actualizados"
+                },
+                {
+                  "key": "duracionDias",
+                  "type": "text",
+                  "value": "10"
+                },
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar imagen válida hasta 2 MiB."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "function reto(r) {",
+                  "  pm.expect(r).to.be.an('object');",
+                  "  ['id','duracionDias','categoriaId','creadorId'].forEach(k => { pm.expect(r[k], k).to.be.a('number'); pm.expect(Number.isInteger(r[k]), k).to.eql(true); pm.expect(r[k], k).to.be.above(0); });",
+                  "  ['nombre','descripcion','createdAt','updatedAt'].forEach(k => pm.expect(r[k], k).to.be.a('string'));",
+                  "  ['createdAt','updatedAt'].forEach(k => pm.expect(Number.isNaN(Date.parse(r[k])), k).to.eql(false));",
+                  "  pm.expect(r.esOficial).to.be.a('boolean');",
+                  "  pm.expect(r.status).to.eql('ACTIVE');",
+                  "  pm.expect(r.imagenUrl === null || typeof r.imagenUrl === 'string').to.eql(true);",
+                  "}",
+                  "pm.test('Estructura real de reto', () => reto(pm.response.json().data));",
+                  "pm.test('URL pública de imagen',()=>{const u=pm.response.json().data.imagenUrl; pm.expect(u).to.be.a('string'); pm.expect(u.startsWith('https://')).to.eql(true); pm.expect(u).to.include('/storage/v1/object/public/retos/');});",
+                  "pm.test('Texto y duración',()=>{const r=pm.response.json().data; pm.expect(r.descripcion).to.eql('Imagen y texto actualizados'); pm.expect(r.duracionDias).to.eql(10);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST imagen: contenido inválido",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Seleccionar un .txt con texto renombrado a .png; hasta 2 MiB. Categoría activa necesaria salvo para tamaño, que se rechaza en el parser.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "value": "{{nombreCaso}}"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "Fixture con imagen de Postman B"
+                },
+                {
+                  "key": "duracionDias",
+                  "type": "text",
+                  "value": "7"
+                },
+                {
+                  "key": "categoriaId",
+                  "type": "text",
+                  "value": "{{categoriaId}}"
+                },
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar un .txt con texto renombrado a .png; hasta 2 MiB."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "pm.variables.set('nombreCaso','Postman B imagen rechazada');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH imagen: contenido inválido",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "Seleccionar un .txt con texto renombrado a .png; hasta 2 MiB. Ejecutar sobre fixture activo.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar un .txt con texto renombrado a .png; hasta 2 MiB."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST imagen: extensión incorrecta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Seleccionar PNG real renombrado a .jpg; hasta 2 MiB. Categoría activa necesaria salvo para tamaño, que se rechaza en el parser.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "value": "{{nombreCaso}}"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "Fixture con imagen de Postman B"
+                },
+                {
+                  "key": "duracionDias",
+                  "type": "text",
+                  "value": "7"
+                },
+                {
+                  "key": "categoriaId",
+                  "type": "text",
+                  "value": "{{categoriaId}}"
+                },
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar PNG real renombrado a .jpg; hasta 2 MiB."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "pm.variables.set('nombreCaso','Postman B imagen rechazada');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH imagen: extensión incorrecta",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "Seleccionar PNG real renombrado a .jpg; hasta 2 MiB. Ejecutar sobre fixture activo.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar PNG real renombrado a .jpg; hasta 2 MiB."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST imagen: más de 2 MiB",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Seleccionar archivo de 2097153 bytes o más. Categoría activa necesaria salvo para tamaño, que se rechaza en el parser.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "value": "{{nombreCaso}}"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "Fixture con imagen de Postman B"
+                },
+                {
+                  "key": "duracionDias",
+                  "type": "text",
+                  "value": "7"
+                },
+                {
+                  "key": "categoriaId",
+                  "type": "text",
+                  "value": "{{categoriaId}}"
+                },
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar archivo de 2097153 bytes o más."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "pm.variables.set('nombreCaso','Postman B imagen rechazada');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH imagen: más de 2 MiB",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoImagenId}}",
+            "description": "Seleccionar archivo de 2097153 bytes o más. Ejecutar sobre fixture activo.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "imagen",
+                  "type": "file",
+                  "src": "",
+                  "description": "Seleccionar archivo de 2097153 bytes o más."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const archivo = pm.request.body.formdata.find(p=>p.key==='imagen');",
+                  "if(!archivo || !archivo.src || (Array.isArray(archivo.src) && archivo.src.length===0)) { console.warn('Omitida: seleccione el archivo local indicado en imagen.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('retoImagenId') || pm.environment.get('retoImagenId') !== pm.environment.get('retoImagenIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Multipart número con decimal",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Multipart número con decimal",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nombre",
+                  "type": "text",
+                  "value": "{{nombreCaso}}"
+                },
+                {
+                  "key": "descripcion",
+                  "type": "text",
+                  "value": "Fixture con imagen de Postman B"
+                },
+                {
+                  "key": "categoriaId",
+                  "type": "text",
+                  "value": "{{categoriaId}}"
+                },
+                {
+                  "key": "duracionDias",
+                  "type": "text",
+                  "value": "1.5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('nombreCaso','Postman B número inválido');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Validaciones y permisos",
+      "item": [
+        {
+          "name": "GET page cero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?page=0",
+            "description": "GET page cero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET page decimal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?page=1.5",
+            "description": "GET page decimal",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET page texto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?page=abc",
+            "description": "GET page texto",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET limit cero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?limit=0",
+            "description": "GET limit cero",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET limit excesivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?limit=51",
+            "description": "GET limit excesivo",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET categoría inválida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?categoriaId=-1",
+            "description": "GET categoría inválida",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET texto repetido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?q=a&q=b",
+            "description": "GET texto repetido",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET texto demasiado largo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "description": "GET texto demasiado largo",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET ID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/abc",
+            "description": "GET ID inválido",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET inexistente confirmado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoInexistenteId}}",
+            "description": "ID positivo dentro del rango Int, confirmado como inexistente por el responsable del entorno.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST sin JWT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "POST sin JWT",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreCaso}}\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 7,\n  \"categoriaId\": {{categoriaId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('nombreCaso','Postman B sin JWT');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH sin JWT",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH sin JWT",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No debe aplicarse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE sin JWT",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "DELETE sin JWT",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST JWT inválido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "POST JWT inválido",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jwtInvalido}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreCaso}}\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 7,\n  \"categoriaId\": {{categoriaId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('nombreCaso','Postman B JWT inválido');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH otro creador",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH otro creador",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otroUsuarioToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No debe aplicarse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('otroUsuarioId') || pm.environment.get('otroUsuarioId')===pm.environment.get('usuarioId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH ID inválido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/abc",
+            "description": "PATCH ID inválido",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No debe aplicarse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH inexistente confirmado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoInexistenteId}}",
+            "description": "Caso documentado y omitido intencionalmente: no mutar un ID no capturado. Los 404 ejecutables de PATCH/DELETE usan el fixture desactivado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"No debe aplicarse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El ID inexistente nunca puede usarse para mutaciones: no fue creado por esta colección.",
+                  "console.warn('Caso manual de contrato; omitido para evitar tocar datos compartidos. Use los casos 404 de fixture inactivo.'); pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE otro creador",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "DELETE otro creador",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otroUsuarioToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }",
+                  "if(!pm.environment.get('otroUsuarioId') || pm.environment.get('otroUsuarioId')===pm.environment.get('usuarioId')) pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE ID inválido",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/abc",
+            "description": "DELETE ID inválido"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE inexistente confirmado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/retos/{{retoInexistenteId}}",
+            "description": "Caso documentado y omitido intencionalmente: no mutar un ID no capturado. Los 404 ejecutables de PATCH/DELETE usan el fixture desactivado."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El ID inexistente nunca puede usarse para mutaciones: no fue creado por esta colección.",
+                  "console.warn('Caso manual de contrato; omitido para evitar tocar datos compartidos. Use los casos 404 de fixture inactivo.'); pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST DTO vacío",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "POST DTO vacío",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST DTO duración cero",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "POST DTO duración cero",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Inválido\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 0,\n  \"categoriaId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST DTO número como texto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "POST DTO número como texto",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Inválido\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": \"7\",\n  \"categoriaId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST DTO nombre largo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "POST DTO nombre largo",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 7,\n  \"categoriaId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH DTO vacío",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH DTO vacío",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH DTO campo protegido",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH DTO campo protegido",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"esOficial\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH DTO duración cero",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH DTO duración cero",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"duracionDias\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH DTO categoría texto",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH DTO categoría texto",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": \"1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST categoría inexistente o inactiva",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos",
+            "description": "Categoría confirmada como inexistente o inactiva; no modificar categorías ni seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"{{nombreCaso}}\",\n  \"descripcion\": \"Fixture exclusivo de Postman parte B\",\n  \"duracionDias\": 7,\n  \"categoriaId\": {{categoriaInexistenteId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.variables.set('nombreCaso','Postman B categoría rechazada');"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH categoría inexistente o inactiva",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/retos/{{retoId}}",
+            "description": "PATCH categoría inexistente o inactiva",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"categoriaId\": {{categoriaInexistenteId}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.environment.get('retoId') || pm.environment.get('retoId') !== pm.environment.get('retoIdPropio')) { console.warn('Omitida: ID no capturado por esta colección; crear fixture primero.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Error JSON del middleware central', () => { const b=pm.response.json(); pm.expect(b.error).to.be.a('string').and.not.empty; if(b.details !== undefined) { pm.expect(b.details).to.be.an('object'); Object.values(b.details).forEach(v=>pm.expect(v).to.be.a('string')); } pm.expect(b).not.to.have.property('stack'); });",
+                  ""
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -9,13 +9,22 @@ export class RetosController {
   constructor(private readonly retosUseCase: RetosUseCase) {}
 
   create = async (req: Request, res: Response): Promise<void> => {
-    const reto = await this.retosUseCase.create(req.body, requireUser(req));
+    const reto = await this.retosUseCase.create(
+      req.body,
+      requireUser(req),
+      req.file ? { content: req.file.buffer, originalName: req.file.originalname } : undefined,
+    );
     res.status(201).json({ data: reto });
   };
 
   update = async (req: Request, res: Response): Promise<void> => {
     const id = parseId(req.params["id"]);
-    const reto = await this.retosUseCase.update(id, req.body, requireUser(req));
+    const reto = await this.retosUseCase.update(
+      id,
+      req.body,
+      requireUser(req),
+      req.file ? { content: req.file.buffer, originalName: req.file.originalname } : undefined,
+    );
     res.status(200).json({ data: reto });
   };
 

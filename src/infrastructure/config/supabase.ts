@@ -9,6 +9,7 @@ export interface ImageStorage {
     options: { contentType: string; upsert: false },
   ): Promise<{ data: { path: string } | null; error: unknown }>;
   getPublicUrl(path: string): { data: { publicUrl: string } };
+  remove?(paths: string[]): Promise<{ error: unknown }>;
 }
 
 /** Inicialización diferida: importar el módulo no crea clientes ni realiza peticiones. */

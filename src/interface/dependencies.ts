@@ -1,3 +1,4 @@
+import { SupabaseImageService } from "../infrastructure/services/supabase-image.service.ts";
 import { AuthUseCase } from "../application/auth/auth.use-case.ts";
 import { RetosUseCase } from "../application/retos/retos.use-case.ts";
 import { UsuariosUseCase } from "../application/usuarios/usuarios.use-case.ts";
@@ -20,4 +21,11 @@ const passwordHasher = new BcryptService();
 export const tokenService = new JwtService();
 export const authUseCase = new AuthUseCase(usuariosRepository, passwordHasher, tokenService);
 export const usuariosUseCase = new UsuariosUseCase(usuariosRepository);
-export const retosUseCase = new RetosUseCase(new RetosPgRepository(), new CategoriasPgRepository());
+export const retosUseCase = new RetosUseCase(
+  new RetosPgRepository(),
+  new CategoriasPgRepository(),
+  {
+    upload: (file) => new SupabaseImageService().upload(file),
+    remove: (path) => new SupabaseImageService().remove(path),
+  },
+);

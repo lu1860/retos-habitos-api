@@ -2,6 +2,8 @@ import type { Page } from "../models/Pagination.ts";
 import type { ActualizarReto, NuevoReto, Reto, RetoFiltros } from "../models/Reto.ts";
 
 export interface IRetoRepository {
+  /** Solo true cuando el adaptador confirma que la escritura fue rechazada. */
+  isConfirmedWriteRejection?(error: unknown): boolean;
   create(data: NuevoReto): Promise<Reto>;
   /** Devuelve null si no existe o está inactivo. */
   findActiveById(id: number): Promise<Reto | null>;

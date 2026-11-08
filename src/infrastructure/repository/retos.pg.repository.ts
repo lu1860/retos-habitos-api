@@ -2,11 +2,19 @@ import { toSkip } from "../../application/validation/pagination.ts";
 import type { Page } from "../../domain/models/Pagination.ts";
 import type { ActualizarReto, NuevoReto, Reto, RetoFiltros } from "../../domain/models/Reto.ts";
 import type { IRetoRepository } from "../../domain/repository/IReto.repository.ts";
-import type { Prisma, retos } from "../../generated/prisma/client.ts";
+import { Prisma, type retos } from "../../generated/prisma/client.ts";
 import { prisma } from "./prisma.client.ts";
 
 export class RetosPgRepository implements IRetoRepository {
   constructor(private readonly tabla: typeof prisma.retos = prisma.retos) {}
+
+  isConfirmedWriteRejection(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientValidationError ||
+      (error instanceof Prisma.PrismaClientKnownRequestError &&
+        ["P2000", "P2002", "P2003", "P2025"].includes(error.code))
+    );
+  }
 
   async create(data: NuevoReto): Promise<Reto> {
     const row = await this.tabla.create({

@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { ConsultarParticipacionUseCase } from "../../application/participaciones/consultar-participacion.use-case.ts";
 import type { ParticipacionesUseCase } from "../../application/participaciones/participaciones.use-case.ts";
 import { BadRequestError } from "../../application/errors/app.error.ts";
 import { parseId } from "../../application/validation/id.ts";
@@ -14,7 +15,16 @@ const retoId = (req: Request): number => {
 };
 
 export class ParticipacionesController {
-  constructor(private readonly useCase: ParticipacionesUseCase) {}
+  constructor(
+    private readonly useCase: ParticipacionesUseCase,
+    private readonly consultarParticipacion: ConsultarParticipacionUseCase,
+  ) {}
+
+  consultar = async (req: Request, res: Response): Promise<void> => {
+    res.set("Cache-Control", "no-store");
+    const data = await this.consultarParticipacion.execute(requireUser(req).id, retoId(req));
+    res.json({ data });
+  };
 
   join = async (req: Request, res: Response): Promise<void> => {
     const result = await this.useCase.join(requireUser(req).id, retoId(req));

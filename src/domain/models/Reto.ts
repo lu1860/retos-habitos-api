@@ -26,6 +26,11 @@ export interface NuevoReto {
   creadorId: number;
 }
 
+export type CrearRetoInput = Pick<
+  NuevoReto,
+  "nombre" | "descripcion" | "duracionDias" | "categoriaId"
+>;
+
 /** No permite cambiar creador, oficialidad ni estado mediante una edición. */
 export type ActualizarReto = Partial<
   Pick<NuevoReto, "nombre" | "descripcion" | "imagenUrl" | "duracionDias" | "categoriaId">

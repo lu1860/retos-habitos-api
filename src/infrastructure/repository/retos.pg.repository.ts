@@ -18,6 +18,7 @@ export class RetosPgRepository implements IRetoRepository {
         es_oficial: data.esOficial,
         categoria_id: data.categoriaId,
         creador_id: data.creadorId,
+        status: "ACTIVE",
       },
     });
     return this.toDomain(row);

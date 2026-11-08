@@ -71,6 +71,7 @@ describe("RetosPgRepository (Prisma sustituido, sin base de datos)", () => {
           es_oficial: false,
           categoria_id: 2,
           creador_id: 7,
+          status: "ACTIVE",
         },
       },
     ]);

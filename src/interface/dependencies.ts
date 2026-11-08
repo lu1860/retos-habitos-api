@@ -3,6 +3,7 @@ import { RetosUseCase } from "../application/retos/retos.use-case.ts";
 import { UsuariosUseCase } from "../application/usuarios/usuarios.use-case.ts";
 import { UsuariosPgRepository } from "../infrastructure/repository/usuarios.pg.repository.ts";
 import { RetosPgRepository } from "../infrastructure/repository/retos.pg.repository.ts";
+import { CategoriasPgRepository } from "../infrastructure/repository/categorias.pg.repository.ts";
 import { BcryptService } from "../infrastructure/services/bcrypt.service.ts";
 import { JwtService } from "../infrastructure/services/jwt.service.ts";
 
@@ -19,4 +20,4 @@ const passwordHasher = new BcryptService();
 export const tokenService = new JwtService();
 export const authUseCase = new AuthUseCase(usuariosRepository, passwordHasher, tokenService);
 export const usuariosUseCase = new UsuariosUseCase(usuariosRepository);
-export const retosUseCase = new RetosUseCase(new RetosPgRepository());
+export const retosUseCase = new RetosUseCase(new RetosPgRepository(), new CategoriasPgRepository());

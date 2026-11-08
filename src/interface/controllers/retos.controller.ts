@@ -1,0 +1,24 @@
+import type { Request, Response } from "express";
+import type { RetosUseCase } from "../../application/retos/retos.use-case.ts";
+import { parseId } from "../../application/validation/id.ts";
+import { parsePagination } from "../../application/validation/pagination.ts";
+import { optionalText } from "../../application/validation/query.ts";
+
+export class RetosController {
+  constructor(private readonly retosUseCase: RetosUseCase) {}
+
+  list = async (req: Request, res: Response): Promise<void> => {
+    const { page, limit } = parsePagination(req.query);
+    const q = optionalText(req.query["q"], "q");
+    const categoriaId =
+      req.query["categoriaId"] === undefined
+        ? undefined
+        : parseId(req.query["categoriaId"], "categoriaId");
+    res.status(200).json(await this.retosUseCase.list({ page, limit, q, categoriaId }));
+  };
+
+  detail = async (req: Request, res: Response): Promise<void> => {
+    const id = parseId(req.params["id"]);
+    res.status(200).json({ data: await this.retosUseCase.findById(id) });
+  };
+}

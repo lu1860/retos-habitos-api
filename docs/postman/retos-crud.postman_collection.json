@@ -78,8 +78,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.a('string').and.not.empty; pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('user'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
-                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user.rol==='user') {pm.environment.set('token',d.token); pm.environment.set('usuarioId',String(d.user.id));} }"
+                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.an('object'); pm.expect(d.token.accessToken).to.be.a('string').and.not.empty; pm.expect(d.token.tokenType).to.eql('Bearer'); pm.expect(d.token.expiresIn).to.be.a('number').and.above(0); pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('user'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
+                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user && d.user.rol==='user' && d.user.status==='ACTIVE' && d.token && typeof d.token.accessToken==='string' && d.token.accessToken.length>0 && d.token.tokenType==='Bearer' && Number.isFinite(d.token.expiresIn) && d.token.expiresIn>0) {pm.environment.set('token',d.token.accessToken); pm.environment.set('usuarioId',String(d.user.id));} }"
                 ]
               }
             }
@@ -126,8 +126,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.a('string').and.not.empty; pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('admin'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
-                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user.rol==='admin') {pm.environment.set('adminToken',d.token); pm.environment.set('adminUsuarioId',String(d.user.id));} }"
+                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.an('object'); pm.expect(d.token.accessToken).to.be.a('string').and.not.empty; pm.expect(d.token.tokenType).to.eql('Bearer'); pm.expect(d.token.expiresIn).to.be.a('number').and.above(0); pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('admin'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
+                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user && d.user.rol==='admin' && d.user.status==='ACTIVE' && d.token && typeof d.token.accessToken==='string' && d.token.accessToken.length>0 && d.token.tokenType==='Bearer' && Number.isFinite(d.token.expiresIn) && d.token.expiresIn>0) {pm.environment.set('adminToken',d.token.accessToken); pm.environment.set('adminUsuarioId',String(d.user.id));} }"
                 ]
               }
             }
@@ -174,8 +174,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.a('string').and.not.empty; pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('user'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
-                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user.rol==='user') {pm.environment.set('otroUsuarioToken',d.token); pm.environment.set('otroUsuarioId',String(d.user.id));} }"
+                  "pm.test('Usuario y token de login',()=>{const d=pm.response.json().data; pm.expect(d.token).to.be.an('object'); pm.expect(d.token.accessToken).to.be.a('string').and.not.empty; pm.expect(d.token.tokenType).to.eql('Bearer'); pm.expect(d.token.expiresIn).to.be.a('number').and.above(0); pm.expect(d.user.id).to.be.a('number'); pm.expect(d.user.rol).to.eql('user'); pm.expect(d.user.status).to.eql('ACTIVE'); pm.expect(d.user).not.to.have.property('passwordHash'); });",
+                  "if(pm.response.code===200) { const d=pm.response.json().data; if(d.user && d.user.rol==='user' && d.user.status==='ACTIVE' && d.token && typeof d.token.accessToken==='string' && d.token.accessToken.length>0 && d.token.tokenType==='Bearer' && Number.isFinite(d.token.expiresIn) && d.token.expiresIn>0) {pm.environment.set('otroUsuarioToken',d.token.accessToken); pm.environment.set('otroUsuarioId',String(d.user.id));} }"
                 ]
               }
             }

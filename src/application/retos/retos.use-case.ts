@@ -1,9 +1,14 @@
 import type { PaginatedResult } from "../../domain/models/Pagination.ts";
-import type { CrearRetoInput, Reto, RetoFiltros } from "../../domain/models/Reto.ts";
+import type {
+  CrearRetoInput,
+  EditarRetoInput,
+  Reto,
+  RetoFiltros,
+} from "../../domain/models/Reto.ts";
 import type { AuthUser } from "../../domain/models/Usuario.ts";
 import type { ICategoriaRepository } from "../../domain/repository/ICategoria.repository.ts";
 import type { IRetoRepository } from "../../domain/repository/IReto.repository.ts";
-import { NotFoundError } from "../errors/app.error.ts";
+import { ForbiddenError, NotFoundError } from "../errors/app.error.ts";
 import { toPaginatedResult } from "../validation/pagination.ts";
 
 export class RetosUseCase {
@@ -23,6 +28,25 @@ export class RetosUseCase {
       categoriaId: input.categoriaId,
       creadorId: user.id,
       esOficial: user.rol === "admin",
+    });
+  }
+
+  async update(id: number, input: EditarRetoInput, user: AuthUser): Promise<Reto> {
+    const reto = await this.findById(id);
+    if (reto.creadorId !== user.id && user.rol !== "admin") {
+      throw new ForbiddenError("No tienes permiso para editar este reto");
+    }
+    if (
+      input.categoriaId !== undefined &&
+      !(await this.categorias.findActiveById(input.categoriaId))
+    ) {
+      throw new NotFoundError("Categoría no encontrada o inactiva");
+    }
+    return this.retos.update(id, {
+      nombre: input.nombre,
+      descripcion: input.descripcion,
+      duracionDias: input.duracionDias,
+      categoriaId: input.categoriaId,
     });
   }
 

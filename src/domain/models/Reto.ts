@@ -31,6 +31,8 @@ export type CrearRetoInput = Pick<
   "nombre" | "descripcion" | "duracionDias" | "categoriaId"
 >;
 
+export type EditarRetoInput = Partial<CrearRetoInput>;
+
 /** No permite cambiar creador, oficialidad ni estado mediante una edición. */
 export type ActualizarReto = Partial<
   Pick<NuevoReto, "nombre" | "descripcion" | "imagenUrl" | "duracionDias" | "categoriaId">

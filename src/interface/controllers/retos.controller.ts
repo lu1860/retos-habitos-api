@@ -13,6 +13,12 @@ export class RetosController {
     res.status(201).json({ data: reto });
   };
 
+  update = async (req: Request, res: Response): Promise<void> => {
+    const id = parseId(req.params["id"]);
+    const reto = await this.retosUseCase.update(id, req.body, requireUser(req));
+    res.status(200).json({ data: reto });
+  };
+
   list = async (req: Request, res: Response): Promise<void> => {
     const { page, limit } = parsePagination(req.query);
     const q = optionalText(req.query["q"], "q");

@@ -208,7 +208,12 @@ describe("GET /api/retos (rutas públicas con Prisma sustituido)", () => {
     });
   }
 
-  for (const method of ["PATCH", "DELETE"]) {
+  it("PATCH requiere autenticación", async () => {
+    const response = await fetch(`${url}/1`, { method: "PATCH" });
+    assert.equal(response.status, 401);
+  });
+
+  for (const method of ["DELETE"]) {
     it(`no expone ${method}`, async () => {
       const response = await fetch(`${url}${method === "POST" ? "" : "/1"}`, { method });
       assert.equal(response.status, 404);

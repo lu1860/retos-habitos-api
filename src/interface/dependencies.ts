@@ -9,6 +9,7 @@ import { CategoriasPgRepository } from "../infrastructure/repository/categorias.
 import { BcryptService } from "../infrastructure/services/bcrypt.service.ts";
 import { JwtService } from "../infrastructure/services/jwt.service.ts";
 import { ParticipacionesUseCase } from "../application/participaciones/participaciones.use-case.ts";
+import { ConsultarParticipacionUseCase } from "../application/participaciones/consultar-participacion.use-case.ts";
 import { ParticipacionesPgRepository } from "../infrastructure/repository/participaciones.pg.repository.ts";
 
 export const participacionesUseCase = new ParticipacionesUseCase(new ParticipacionesPgRepository());
@@ -21,6 +22,11 @@ export const participacionesUseCase = new ParticipacionesUseCase(new Participaci
  * y exportar el caso de uso para su controlador.
  */
 const usuariosRepository = new UsuariosPgRepository();
+export const consultarParticipacionUseCase = new ConsultarParticipacionUseCase(
+  usuariosRepository,
+  new RetosPgRepository(),
+  new ParticipacionesPgRepository(),
+);
 const categoriasRepository = new CategoriasPgRepository();
 const passwordHasher = new BcryptService();
 

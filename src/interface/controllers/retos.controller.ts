@@ -19,6 +19,12 @@ export class RetosController {
     res.status(200).json({ data: reto });
   };
 
+  deactivate = async (req: Request, res: Response): Promise<void> => {
+    const id = parseId(req.params["id"]);
+    await this.retosUseCase.deactivate(id, requireUser(req));
+    res.status(204).end();
+  };
+
   list = async (req: Request, res: Response): Promise<void> => {
     const { page, limit } = parsePagination(req.query);
     const q = optionalText(req.query["q"], "q");

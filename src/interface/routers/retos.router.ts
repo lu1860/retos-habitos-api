@@ -11,6 +11,7 @@ const controller = new RetosController(retosUseCase);
 
 router.post("/", authenticate, validateBody(CrearRetoDto), controller.create);
 router.patch("/:id", authenticate, validateBody(ActualizarRetoDto), controller.update);
+router.delete("/:id", authenticate, controller.deactivate);
 
 router.get("/", controller.list);
 router.get("/:id", controller.detail);

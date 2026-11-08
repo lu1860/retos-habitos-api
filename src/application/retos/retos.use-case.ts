@@ -50,6 +50,14 @@ export class RetosUseCase {
     });
   }
 
+  async deactivate(id: number, user: AuthUser): Promise<void> {
+    const reto = await this.findById(id);
+    if (reto.creadorId !== user.id && user.rol !== "admin") {
+      throw new ForbiddenError("No tienes permiso para eliminar este reto");
+    }
+    await this.retos.deactivate(id);
+  }
+
   async list(filtros: RetoFiltros): Promise<PaginatedResult<Reto>> {
     const { rows, total } = await this.retos.findAll(filtros);
     return toPaginatedResult(rows, total, filtros.page, filtros.limit);

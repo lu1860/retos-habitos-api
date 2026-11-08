@@ -12,4 +12,6 @@ export interface StoredImage {
 export interface IImageService {
   /** Valida y sube una imagen. Solo devuelve una URL tras confirmar la subida. */
   upload(file: ImageFile): Promise<StoredImage>;
+  /** Elimina exclusivamente una subida nueva identificada por su ruta interna. */
+  remove(path: string): Promise<void>;
 }

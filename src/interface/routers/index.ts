@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { health } from "../controllers/health.controller.ts";
 import authRouter from "./auth.router.ts";
+import categoriasRouter from "./categorias.router.ts";
+import retosRouter from "./retos.router.ts";
 import usuariosRouter from "./usuarios.router.ts";
 
 /**
@@ -13,5 +15,7 @@ const router = Router();
 router.get("/health", health);
 router.use("/auth", authRouter);
 router.use("/usuarios", usuariosRouter);
+router.use("/retos", retosRouter);
+router.use("/categorias", categoriasRouter);
 
 export default router;

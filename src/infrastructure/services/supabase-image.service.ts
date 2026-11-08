@@ -16,6 +16,22 @@ const FORMATS = {
 export class SupabaseImageService implements IImageService {
   constructor(private readonly storage: ImageStorage = createSupabaseImageStorage()) {}
 
+  async remove(path: string): Promise<void> {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp)$/.test(
+        path,
+      )
+    )
+      throw new ImageStorageError();
+    try {
+      if (!this.storage.remove) throw new ImageStorageError();
+      const { error } = await this.storage.remove([path]);
+      if (error) throw new ImageStorageError();
+    } catch {
+      throw new ImageStorageError();
+    }
+  }
+
   async upload(file: ImageFile): Promise<StoredImage> {
     // Copia estable: ni el tamaño ni el contenido pueden cambiar durante la validación asíncrona.
     if (file.content.byteLength === 0) throw new BadRequestError("La imagen está vacía");
@@ -38,16 +54,25 @@ export class SupabaseImageService implements IImageService {
       throw new BadRequestError("La extensión no corresponde al formato real de la imagen");
     }
     const path = `${randomUUID()}.${format.extension}`;
+    let uploaded = false;
     try {
       const { data, error } = await this.storage.upload(path, content, {
         contentType: detected.mime,
         upsert: false,
       });
       if (error || !data || data.path !== path) throw new ImageStorageError();
+      uploaded = true;
       const { data: publicData } = this.storage.getPublicUrl(data.path);
       if (!publicData.publicUrl) throw new ImageStorageError();
       return { path: data.path, publicUrl: publicData.publicUrl };
     } catch {
+      if (uploaded) {
+        try {
+          await this.remove(path);
+        } catch {
+          console.error("[retos] No se pudo limpiar una subida sin URL; requiere reconciliación");
+        }
+      }
       throw new ImageStorageError();
     }
   }

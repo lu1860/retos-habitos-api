@@ -28,9 +28,30 @@ let reads = 0;
 let writes = 0;
 
 before(async () => {
+  const { UsuariosPgRepository } = await import(
+    "../src/infrastructure/repository/usuarios.pg.repository.ts"
+  );
+  mock.method(UsuariosPgRepository.prototype, "findActiveById", async (id: number) => ({
+    id,
+    nombre: "Ana",
+    email: "ana@example.test",
+    passwordHash: "no-se-usa",
+    rol: id === 8 ? "admin" : "user",
+    status: "ACTIVE",
+    createdAt: new Date(),
+  }));
   // Se ejecuta el repositorio real con el delegado Prisma sustituido: nunca hay consultas remotas.
-  const { RetosPgRepository } = await import("../src/infrastructure/repository/retos.pg.repository.ts");
-  const tabla = { findFirst() {}, update() {}, count() {}, findMany() {}, delete() {}, deleteMany() {} };
+  const { RetosPgRepository } = await import(
+    "../src/infrastructure/repository/retos.pg.repository.ts"
+  );
+  const tabla = {
+    findFirst() {},
+    update() {},
+    count() {},
+    findMany() {},
+    delete() {},
+    deleteMany() {},
+  };
   mock.method(tabla, "findFirst", async ({ where }: { where: { id: number; status: string } }) => {
     reads++;
     return row.id === where.id && row.status === where.status ? structuredClone(row) : null;

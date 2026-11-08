@@ -9,17 +9,20 @@ import type {
 import type { AuthUser } from "../../domain/models/Usuario.ts";
 import type { ICategoriaRepository } from "../../domain/repository/ICategoria.repository.ts";
 import type { IRetoRepository } from "../../domain/repository/IReto.repository.ts";
-import { ForbiddenError, NotFoundError } from "../errors/app.error.ts";
+import type { IUsuarioRepository } from "../../domain/repository/IUsuario.repository.ts";
+import { ForbiddenError, NotFoundError, UnauthorizedError } from "../errors/app.error.ts";
 import { toPaginatedResult } from "../validation/pagination.ts";
 
 export class RetosUseCase {
   constructor(
     private readonly retos: IRetoRepository,
     private readonly categorias: ICategoriaRepository,
+    private readonly usuarios: IUsuarioRepository,
     private readonly images?: IImageService,
   ) {}
 
   async create(input: CrearRetoInput, user: AuthUser, image?: ImageFile): Promise<Reto> {
+    user = await this.requireActiveUser(user.id);
     if (!(await this.categorias.findActiveById(input.categoriaId))) {
       throw new NotFoundError("Categoría no encontrada o inactiva");
     }
@@ -42,6 +45,7 @@ export class RetosUseCase {
     user: AuthUser,
     image?: ImageFile,
   ): Promise<Reto> {
+    user = await this.requireActiveUser(user.id);
     const reto = await this.findById(id);
     if (reto.creadorId !== user.id && user.rol !== "admin") {
       throw new ForbiddenError("No tienes permiso para editar este reto");
@@ -89,11 +93,20 @@ export class RetosUseCase {
   }
 
   async deactivate(id: number, user: AuthUser): Promise<void> {
+    user = await this.requireActiveUser(user.id);
     const reto = await this.findById(id);
     if (reto.creadorId !== user.id && user.rol !== "admin") {
       throw new ForbiddenError("No tienes permiso para eliminar este reto");
     }
     await this.retos.deactivate(id);
+  }
+
+  private async requireActiveUser(id: number): Promise<AuthUser> {
+    const user = await this.usuarios.findActiveById(id);
+    if (!user) {
+      throw new UnauthorizedError("La sesión ya no es válida. Inicia sesión de nuevo");
+    }
+    return user;
   }
 
   async list(filtros: RetoFiltros): Promise<PaginatedResult<Reto>> {

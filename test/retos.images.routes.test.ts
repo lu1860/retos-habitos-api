@@ -42,6 +42,18 @@ const storage: ImageStorage = {
   },
 };
 before(async () => {
+  const { UsuariosPgRepository } = await import(
+    "../src/infrastructure/repository/usuarios.pg.repository.ts"
+  );
+  mock.method(UsuariosPgRepository.prototype, "findActiveById", async (id: number) => ({
+    id,
+    nombre: "Ana",
+    email: "ana@example.test",
+    passwordHash: "no-se-usa",
+    rol: id === 8 ? "admin" : "user",
+    status: "ACTIVE",
+    createdAt: new Date(),
+  }));
   const { RetosPgRepository } = await import(
     "../src/infrastructure/repository/retos.pg.repository.ts"
   );
@@ -213,7 +225,7 @@ it("401 sin JWT antes de procesar imagen", async () => {
   assert.equal(uploads, 0);
 });
 it("403 ajeno sin subida", async () => {
-  assert.equal((await send(form(), "PATCH", sign(8))).status, 403);
+  assert.equal((await send(form(), "PATCH", sign(9))).status, 403);
   assert.equal(uploads, 0);
 });
 it("permite administrador ajeno", async () => {

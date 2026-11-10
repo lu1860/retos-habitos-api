@@ -4,6 +4,8 @@ import authRouter from "./auth.router.ts";
 import categoriasRouter from "./categorias.router.ts";
 import retosRouter from "./retos.router.ts";
 import usuariosRouter from "./usuarios.router.ts";
+import registrosRouter from "./registros.router.ts";
+
 
 /**
  * Todas las rutas de la API, montadas bajo /api en app.ts.
@@ -17,5 +19,6 @@ router.use("/auth", authRouter);
 router.use("/usuarios", usuariosRouter);
 router.use("/retos", retosRouter);
 router.use("/categorias", categoriasRouter);
+router.use("/registros", registrosRouter);
 
 export default router;

@@ -11,6 +11,8 @@ import { JwtService } from "../infrastructure/services/jwt.service.ts";
 import { ParticipacionesUseCase } from "../application/participaciones/participaciones.use-case.ts";
 import { ConsultarParticipacionUseCase } from "../application/participaciones/consultar-participacion.use-case.ts";
 import { ParticipacionesPgRepository } from "../infrastructure/repository/participaciones.pg.repository.ts";
+import { RegistrosUseCase } from "../application/registros/registros.use-case.ts";
+import { RegistrosPgRepository } from "../infrastructure/repository/registros.pg.repository.ts";
 
 export const participacionesUseCase = new ParticipacionesUseCase(new ParticipacionesPgRepository());
 
@@ -42,4 +44,12 @@ export const retosUseCase = new RetosUseCase(
     upload: (file) => new SupabaseImageService().upload(file),
     remove: (path) => new SupabaseImageService().remove(path),
   },
+);
+
+const registrosRepository = new RegistrosPgRepository();
+const participacionesRepository = new ParticipacionesPgRepository();
+
+export const registrosUseCase = new RegistrosUseCase(
+  registrosRepository,
+  participacionesRepository,
 );

@@ -1,0 +1,174 @@
+# Retos de Hábitos – API
+
+API REST para la aplicación **Retos de Hábitos**, desarrollada para gestionar usuarios, retos grupales, categorías, participaciones y registros diarios de cumplimiento.
+
+## Tecnologías utilizadas
+
+- Node.js
+- TypeScript
+- Express
+- Prisma ORM 7
+- PostgreSQL
+- Neon
+- JWT para autenticación
+- Bcrypt para el manejo seguro de contraseñas
+
+## Arquitectura
+
+El proyecto utiliza una arquitectura por capas:
+
+- **Domain:** modelos y contratos de los repositorios.
+- **Application:** casos de uso y lógica de negocio.
+- **Infrastructure:** conexión a base de datos, repositorios y DTO.
+- **Interface:** controladores, rutas y middlewares.
+
+## Funcionalidades
+
+- Registro e inicio de sesión de usuarios.
+- Autenticación mediante JWT.
+- Gestión de usuarios y roles.
+- Consulta y gestión de categorías.
+- Creación, consulta, actualización y eliminación lógica de retos.
+- Inscripción y salida de retos.
+- Consulta de participación.
+- Registro diario del cumplimiento de hábitos.
+- Consulta del historial de registros.
+- Actualización y eliminación de registros.
+- Consulta del progreso de los participantes.
+- Control de permisos según el rol y la propiedad de los recursos.
+
+## Requisitos previos
+
+- Node.js
+- npm
+- PostgreSQL o una instancia de Neon.
+- Git
+
+## Instalación
+
+Clonar el repositorio:
+
+```bash
+git clone https://github.com/lu1860/retos-habitos-api.git
+```
+
+Ingresar al proyecto:
+
+```bash
+cd retos-habitos-api
+```
+
+Instalar dependencias:
+
+```bash
+npm install
+```
+
+Generar Prisma Client:
+
+```bash
+npm run prisma:generate
+```
+
+## Variables de entorno
+
+Crear un archivo `.env` en la raíz del proyecto.
+
+```env
+DATABASE_URL=
+DIRECT_URL=
+
+JWT_SECRET=
+JWT_EXPIRES_IN=
+
+PORT=3000
+CORS_ORIGINS=http://localhost:3001
+
+SUPABASE_URL=
+SUPABASE_SECRET_KEY=
+SUPABASE_STORAGE_BUCKET=
+```
+
+Los valores deben configurarse según el entorno de ejecución. No publicar credenciales ni archivos `.env` en GitHub.
+
+## Base de datos
+
+El proyecto utiliza PostgreSQL y Prisma ORM.
+
+Para consultar el estado de las migraciones:
+
+```bash
+npx prisma migrate status
+```
+
+Para aplicar las migraciones pendientes:
+
+```bash
+npx prisma migrate deploy
+```
+
+Para generar Prisma Client:
+
+```bash
+npm run prisma:generate
+```
+
+## Ejecución en desarrollo
+
+```bash
+npm run dev
+```
+
+## Construcción para producción
+
+```bash
+npm run build
+```
+
+## Inicio en producción
+
+```bash
+npm run start
+```
+
+## Pruebas y calidad
+
+Ejecutar pruebas:
+
+```bash
+npm test
+```
+
+Ejecutar ESLint:
+
+```bash
+npm run lint
+```
+
+Verificar formato:
+
+```bash
+npm run format:check
+```
+
+## Rutas principales de la API
+
+| Recurso | Ruta |
+|---|---|
+| Salud del servidor | `/api/health` |
+| Autenticación | `/api/auth` |
+| Retos | `/api/retos` |
+| Categorías | `/api/categorias` |
+| Registros | `/api/registros` |
+
+Las operaciones de creación, modificación y eliminación requieren autenticación y los permisos correspondientes.
+
+## Despliegue
+
+El backend está preparado para desplegarse como servicio Node.js en Render, utilizando PostgreSQL alojado en Neon.
+
+Las variables de entorno deben configurarse directamente en el servicio de alojamiento.
+
+## Repositorio
+
+[GitHub – retos-habitos-api](https://github.com/lu1860/retos-habitos-api)

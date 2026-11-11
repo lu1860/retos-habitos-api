@@ -25,6 +25,11 @@ export class ParticipacionesController {
     const data = await this.consultarParticipacion.execute(requireUser(req).id, retoId(req));
     res.json({ data });
   };
+  misParticipaciones = async (req: Request, res: Response): Promise<void> => {
+  res.set("Cache-Control", "no-store");
+  const data = await this.useCase.findActiveByUsuario(requireUser(req).id);
+  res.json({ data });
+};
 
   join = async (req: Request, res: Response): Promise<void> => {
     const result = await this.useCase.join(requireUser(req).id, retoId(req));

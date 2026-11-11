@@ -46,6 +46,7 @@ router.get(
 );
 
 router.get("/:id/participacion", authenticate, participaciones.consultar);
+router.get("/mis-participaciones",authenticate,participaciones.misParticipaciones);
 
 router.post("/:id/participantes", authenticate, participaciones.join);
 router.delete("/:id/participantes", authenticate, participaciones.leave);

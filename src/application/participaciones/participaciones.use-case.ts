@@ -25,4 +25,8 @@ export class ParticipacionesUseCase {
     if (result === "reto-not-found") throw new NotFoundError("Reto no encontrado");
     if (result === "not-active") throw new NotFoundError("Participación activa no encontrada");
   }
+  async findActiveByUsuario(usuarioId: number) {
+  return this.repository.findActiveByUsuario(usuarioId);
+}
+
 }

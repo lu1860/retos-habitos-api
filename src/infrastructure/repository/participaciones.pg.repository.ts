@@ -5,8 +5,13 @@ import type {
   JoinResult,
   LeaveResult,
 } from "../../domain/repository/IParticipacionLifecycle.repository.ts";
-import { Prisma, type participaciones } from "../../generated/prisma/client.ts";
+import {
+  Prisma,
+  type participaciones,
+  type retos,
+} from "../../generated/prisma/client.ts";
 import { prisma } from "./prisma.client.ts";
+import type { Reto } from "../../domain/models/Reto.ts";
 
 const toDomain = (row: participaciones): Participacion => ({
   id: row.id,
@@ -15,6 +20,22 @@ const toDomain = (row: participaciones): Participacion => ({
   fechaUnion: row.fecha_union,
   status: row.status,
 });
+const toRetoDomain = (row: retos): Reto => ({
+  id: row.id,
+  nombre: row.nombre,
+  descripcion: row.descripcion,
+  imagenUrl: row.imagen_url,
+  duracionDias: row.duracion_dias,
+  esOficial: row.es_oficial,
+  categoriaId: row.categoria_id,
+  creadorId: row.creador_id,
+  status: row.status,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+
+
 
 export class ParticipacionesPgRepository
   implements IParticipacionRepository, IParticipacionLifecycleRepository
@@ -72,6 +93,29 @@ export class ParticipacionesPgRepository
       return changed.count === 1 ? "left" : "not-active";
     });
   }
+
+async findActiveByUsuario(usuarioId: number) {
+  const rows = await this.client.participaciones.findMany({
+    where: {
+      usuario_id: usuarioId,
+      status: "ACTIVE",
+      reto: {
+        status: "ACTIVE",
+      },
+    },
+    include: {
+      reto: true,
+    },
+    orderBy: {
+      fecha_union: "desc",
+    },
+  });
+
+  return rows.map((row) => ({
+    participacion: toDomain(row),
+    reto: toRetoDomain(row.reto),
+  }));
+}
 
   async findByUsuarioYReto(usuarioId: number, retoId: number): Promise<Participacion | null> {
     const row = await this.client.participaciones.findUnique({
